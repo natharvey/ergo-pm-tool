@@ -523,24 +523,21 @@ function renderTasks(tasks) {
   // Top-level tasks only
   var topLevel = tasks.filter(function(t) { return !t.parent_id; });
 
-  // Group top-level tasks by section
-  var sectionBuckets = [];
-  var sectionIndex = {};
-  for (var si = 0; si < SECTIONS.length; si++) {
-    sectionBuckets.push({ name: SECTIONS[si], tasks: [] });
-    sectionIndex[SECTIONS[si]] = si;
-  }
-  var otherBucket = { name: "Other", tasks: [] };
+  // Group top-level tasks by section — preserving order of first appearance
+  var customBuckets = {};
+  var customOrder = [];
+  var unsectionedBucket = { name: "", tasks: [] };
   for (var ti = 0; ti < topLevel.length; ti++) {
     var sec = topLevel[ti].section || "";
-    if (sec && sectionIndex.hasOwnProperty(sec)) {
-      sectionBuckets[sectionIndex[sec]].tasks.push(topLevel[ti]);
+    if (!sec) {
+      unsectionedBucket.tasks.push(topLevel[ti]);
     } else {
-      otherBucket.tasks.push(topLevel[ti]);
+      if (!customBuckets[sec]) { customBuckets[sec] = { name: sec, tasks: [] }; customOrder.push(sec); }
+      customBuckets[sec].tasks.push(topLevel[ti]);
     }
   }
-  var activeBuckets = sectionBuckets.filter(function(b) { return b.tasks.length > 0; });
-  if (otherBucket.tasks.length > 0) activeBuckets.push(otherBucket);
+  var activeBuckets = customOrder.map(function(s) { return customBuckets[s]; });
+  if (unsectionedBucket.tasks.length > 0) activeBuckets.push(unsectionedBucket);
 
   var rows = [];
 
