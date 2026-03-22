@@ -342,9 +342,15 @@ document.getElementById("project-select").addEventListener("change", e => {
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
+var tasksWithActions = new Set();
+
 async function loadTasks() {
   if (!currentProjectId) return;
-  const tasks = await api("GET", `/projects/${currentProjectId}/tasks`);
+  const [tasks, actionItems] = await Promise.all([
+    api("GET", `/projects/${currentProjectId}/tasks`),
+    api("GET", `/projects/${currentProjectId}/all-action-items`),
+  ]);
+  tasksWithActions = new Set(actionItems.map(function(a) { return a.task_id; }));
   currentTasks = tasks;
   renderTasks(tasks);
   populateParentSelector(tasks);
@@ -494,7 +500,7 @@ function projectTaskRowHtml(task, num, level, parentId, hasChildren, isExpanded)
     + "<td style=\"white-space:nowrap;text-align:right\">"
     + "<button class=\"btn-add-inline\" onclick=\"showTypeMenu(event," + task.id + "," + level + ")\" title=\"Add item below\">&#43;</button>"
     + "<button class=\"btn-edit-tmpl\" onclick=\"toggleProjEditPanel(" + task.id + ")\" title=\"Edit\">&#9998;</button>"
-    + "<button class=\"btn-task-action\" onclick=\"openTasksPanel(" + task.id + ")\" title=\"Tasks\">&#10003;</button>"
+    + "<button class=\"btn-task-action" + (tasksWithActions.has(task.id) ? " has-tasks" : "") + "\" onclick=\"openTasksPanel(" + task.id + ")\" title=\"Tasks\">&#10003;</button>"
     + "<button class=\"btn-notes" + (task.notes ? " has-notes" : "") + "\" onclick=\"openNotes(" + task.id + ")\" title=\"Notes\">&#128221;</button> "
     + "<button class=\"btn-danger\" onclick=\"deleteTask(" + task.id + ")\">&#10005;</button>"
     + "</td>"
@@ -1449,7 +1455,7 @@ function _renderNotesSections() {
       + '<div class="notes-section-header">'
       + '<input class="notes-section-title" placeholder="Section title…" value="' + escHtml(section.title) + '" '
       + 'oninput="onNotesTitleInput(' + idx + ',this.value)" />'
-      + '<button class="btn-polish-section" onclick="cleanSectionWithAI(' + idx + ')" title="Polish with AI">&#10024;</button>'
+      + '<button class="btn-polish-section" onclick="cleanSectionWithAI(' + idx + ')">Polish with AI</button>'
       + (notesData.length > 1
           ? '<button class="btn-delete-notes-section" onclick="deleteNotesSection(' + idx + ')" title="Remove">&#10005;</button>'
           : '')
