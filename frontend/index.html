@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ergo</title>
+  <link rel="stylesheet" href="/app/style.css?v=50" />
+</head>
+<body>
+
+<header>
+  <h1>Ergo</h1>
+  <span style="font-size:.85rem;opacity:.6">Implementation Project Manager</span>
+</header>
+
+<!-- ── Tab bar ───────────────────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-projects" onclick="switchTab('projects')">Projects</button>
+  <button class="tab-btn"        id="tab-templates" onclick="switchTab('templates')">Templates</button>
+</div>
+
+<main>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- PROJECTS TAB                                                          -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="pane-projects">
+
+    <!-- 1. Client + Project selector / creator -->
+    <div class="card">
+      <h2>Projects</h2>
+
+      <!-- Client row -->
+      <div id="client-bar" class="selector-row">
+        <span class="selector-label">Client</span>
+        <select id="client-select" onchange="selectClient(this.value)">
+          <option value="">— Select a client —</option>
+        </select>
+        <button class="btn-outline" onclick="showCreateClient()">+ New client</button>
+        <button class="btn-outline" id="btn-rename-client" style="display:none" onclick="renameCurrentClient()">&#9998; Rename</button>
+        <button class="btn-danger"  id="btn-delete-client" style="display:none" onclick="deleteCurrentClient()">Delete</button>
+      </div>
+      <div id="new-client-form" style="display:none; margin-top:.75rem;">
+        <div class="form-row">
+          <input id="new-client-name" placeholder="Client name" style="flex:1 1 220px" />
+          <button class="btn-primary" onclick="createClient()">Create</button>
+          <button class="btn-outline" onclick="hideCreateClient()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Project row (shown once a client is selected) -->
+      <div id="project-section" style="display:none; margin-top:.9rem; padding-top:.9rem; border-top:1px solid var(--gray6)">
+        <div id="project-bar">
+          <span class="selector-label">Project</span>
+          <select id="project-select">
+            <option value="">— Select a project —</option>
+          </select>
+          <button class="btn-outline" onclick="showCreateProject()">+ New project</button>
+          <button class="btn-danger" onclick="deleteCurrentProject()" id="btn-delete-project" style="display:none">Delete</button>
+        </div>
+        <div id="new-project-form" style="display:none; margin-top:.75rem;">
+          <div class="form-row">
+            <input id="new-project-name" name="title" placeholder="Project name" style="flex:1 1 200px" />
+            <input id="new-project-desc" name="title" placeholder="Description (optional)" style="flex:2 1 300px" />
+            <select id="new-project-template" title="Start from template (optional)">
+              <option value="">No template</option>
+            </select>
+            <button class="btn-primary" onclick="createProject()">Create</button>
+            <button class="btn-outline" onclick="hideCreateProject()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. Task table (no add form) -->
+    <div class="card" id="tasks-card" style="display:none">
+      <div class="card-header-row">
+        <h2>Items</h2>
+        <button class="btn-outline btn-all-tasks" onclick="openProjectTasksPanel()">&#10003; View tasks</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px">#</th>
+              <th>Title</th>
+              <th style="width:70px">Weeks</th>
+              <th style="width:130px">Start</th>
+              <th style="width:130px">End</th>
+              <th style="width:110px">Owner</th>
+              <th style="width:110px">Status</th>
+              <th style="width:100px"></th>
+            </tr>
+          </thead>
+          <tbody id="task-tbody">
+            <tr><td colspan="8" class="empty">No items yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3. Plain-English update -->
+    <div class="card" id="update-card" style="display:none">
+      <h2>Submit a project update</h2>
+      <div id="update-form-area">
+        <div class="form-row">
+          <textarea id="update-text" placeholder='e.g. "The design task is done. Move dev start to next Monday." You can also attach a screenshot.'></textarea>
+        </div>
+        <div class="update-file-row">
+          <button id="btn-mic" class="btn-mic" onclick="toggleMic('update-text','btn-mic')" title="Start voice input">&#127908; Speak</button>
+          <label for="update-file" class="btn-file-label">
+            &#128206; Attach image
+            <input type="file" id="update-file" accept="image/jpeg,image/png,image/gif,image/webp"
+                   style="display:none" onchange="onFileSelected(this)" />
+          </label>
+          <span id="file-name-display" class="file-name-display"></span>
+          <button id="btn-clear-file" class="btn-clear-file" onclick="clearFile()" style="display:none">&#10005;</button>
+        </div>
+        <div style="margin-top:.7rem">
+          <button class="btn-primary" id="btn-submit-update" onclick="submitUpdate()">
+            Analyse &amp; propose changes
+          </button>
+        </div>
+      </div>
+      <div id="review-panel" style="display:none">
+        <div id="review-summary-box">
+          <strong>Claude's analysis:</strong> <span id="review-summary"></span>
+        </div>
+        <p class="review-instructions">Tick the changes you want to apply, then click <em>Apply selected</em>.</p>
+        <div id="review-actions"></div>
+        <div class="review-btns">
+          <button class="btn-primary" id="btn-apply-confirmed" onclick="applyConfirmed()">Apply selected</button>
+          <button class="btn-outline" onclick="cancelReview()">Cancel</button>
+        </div>
+      </div>
+      <div id="update-result">
+        <h3 id="result-summary"></h3>
+        <ul id="change-list"></ul>
+      </div>
+    </div>
+
+    <!-- 4. Manual item entry (collapsible) -->
+    <div class="card" id="manual-task-card" style="display:none">
+      <button class="btn-outline" id="btn-manual-task-toggle" onclick="toggleManualTask()">+ Add item manually</button>
+      <div id="manual-task-form" style="display:none; margin-top:1rem;">
+        <div class="form-row">
+          <input id="task-title" name="title" placeholder="Item title *" />
+          <input id="task-weeks" type="number" min="0" placeholder="Weeks" style="width:80px" />
+          <input id="task-start" type="text" placeholder="Start (e.g. 010126)" style="width:150px" />
+          <input id="task-end" type="text" placeholder="End (e.g. 010126)" style="width:150px" />
+          <input id="task-owner" name="owner" placeholder="Owner" list="owner-suggestions" />
+          <select id="task-status" name="status">
+            <option value="not_started">Not started</option>
+            <option value="in_progress">In progress</option>
+            <option value="complete">Complete</option>
+            <option value="blocked">Blocked</option>
+          </select>
+          <select id="task-section" title="Section">
+            <option value="">No section</option>
+            <option value="Kick Off">Kick Off</option>
+            <option value="Discovery &amp; Planning">Discovery &amp; Planning</option>
+            <option value="Integrations">Integrations</option>
+            <option value="Solution Build">Solution Build</option>
+            <option value="User Acceptance Testing">User Acceptance Testing</option>
+            <option value="Training">Training</option>
+            <option value="Go-Live">Go-Live</option>
+          </select>
+          <select id="task-parent" title="Parent (optional)">
+            <option value="">No parent (top-level item)</option>
+          </select>
+          <button class="btn-primary" onclick="addTask()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pane-projects -->
+
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TEMPLATES TAB                                                         -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="pane-templates" style="display:none">
+
+    <div class="card">
+      <h2>Templates</h2>
+      <div id="template-bar">
+        <select id="template-select">
+          <option value="">— Select a template —</option>
+        </select>
+        <button class="btn-outline" onclick="showCreateTemplate()">+ New template</button>
+        <button class="btn-danger" onclick="deleteCurrentTemplate()" id="btn-delete-template" style="display:none">Delete</button>
+      </div>
+      <div id="new-template-form" style="display:none; margin-top:1rem;">
+        <div class="form-row">
+          <input id="new-template-name" placeholder="Template name" style="flex:1 1 200px" />
+          <button class="btn-primary" onclick="createTemplate()">Create</button>
+          <button class="btn-outline" onclick="hideCreateTemplate()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="template-tasks-area" style="display:none; margin-top:1.2rem;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:80px">#</th>
+                <th>Title</th>
+                <th style="width:70px">Weeks</th>
+                <th style="width:140px">Owner</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="template-task-tbody">
+              <tr><td colspan="5" class="empty">No items yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template AI update -->
+    <div class="card" id="tmpl-update-card" style="display:none">
+      <h2>Submit a template update</h2>
+      <div id="tmpl-update-form-area">
+        <div class="form-row">
+          <textarea id="tmpl-update-text" placeholder='e.g. "Add a data migration task under Solution Build." You can also attach a screenshot.'></textarea>
+        </div>
+        <div class="update-file-row">
+          <button id="btn-tmpl-mic" class="btn-mic" onclick="toggleMic('tmpl-update-text','btn-tmpl-mic')" title="Start voice input">&#127908; Speak</button>
+          <label for="tmpl-update-file" class="btn-file-label">
+            &#128206; Attach image
+            <input type="file" id="tmpl-update-file" accept="image/jpeg,image/png,image/gif,image/webp"
+                   style="display:none" onchange="onTmplFileSelected(this)" />
+          </label>
+          <span id="tmpl-file-name-display" class="file-name-display"></span>
+          <button id="btn-tmpl-clear-file" class="btn-clear-file" onclick="clearTmplFile()" style="display:none">&#10005;</button>
+        </div>
+        <div style="margin-top:.7rem">
+          <button class="btn-primary" id="btn-tmpl-submit-update" onclick="submitTemplateUpdate()">
+            Analyse &amp; propose changes
+          </button>
+        </div>
+      </div>
+      <div id="tmpl-review-panel" style="display:none">
+        <div id="tmpl-review-summary-box">
+          <strong>Claude's analysis:</strong> <span id="tmpl-review-summary"></span>
+        </div>
+        <p class="review-instructions">Tick the changes you want to apply, then click <em>Apply selected</em>.</p>
+        <div id="tmpl-review-actions"></div>
+        <div class="review-btns">
+          <button class="btn-primary" id="btn-tmpl-apply-confirmed" onclick="applyTemplateConfirmed()">Apply selected</button>
+          <button class="btn-outline" onclick="cancelTemplateReview()">Cancel</button>
+        </div>
+      </div>
+      <div id="tmpl-update-result">
+        <h3 id="tmpl-result-summary"></h3>
+        <ul id="tmpl-change-list"></ul>
+      </div>
+    </div>
+
+    <!-- Manual template item entry (collapsible) -->
+    <div class="card" id="manual-tmpl-task-card" style="display:none">
+      <button class="btn-outline" id="btn-manual-tmpl-task-toggle" onclick="toggleManualTemplateTask()">+ Add item manually</button>
+      <div id="manual-tmpl-task-form" style="display:none; margin-top:1rem;">
+        <div class="form-row">
+          <input id="tmpl-task-title" placeholder="Item title *" />
+          <input id="tmpl-task-owner" placeholder="Owner" />
+          <input id="tmpl-task-weeks" type="number" min="0" placeholder="Weeks" style="width:80px" />
+          <select id="tmpl-task-section" onchange="onTmplSectionChange(this)">
+            <option value="">No section</option>
+            <option value="Kick Off">Kick Off</option>
+            <option value="Discovery &amp; Planning">Discovery &amp; Planning</option>
+            <option value="Integrations">Integrations</option>
+            <option value="Solution Build">Solution Build</option>
+            <option value="User Acceptance Testing">User Acceptance Testing</option>
+            <option value="Training">Training</option>
+            <option value="Go-Live">Go-Live</option>
+            <option value="__new__">+ New section…</option>
+          </select>
+          <input id="tmpl-task-section-custom" placeholder="New section name" style="display:none;flex:1 1 140px" />
+          <select id="tmpl-task-parent" title="Parent (optional)">
+            <option value="">No parent (top-level item)</option>
+          </select>
+          <button class="btn-primary" onclick="addTemplateTask()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pane-templates -->
+
+</main>
+
+<!-- ── Tasks slide-in panel (left) ──────────────────────────────────────────── -->
+<div id="tasks-overlay" class="tasks-overlay" onclick="closeTasksPanel()"></div>
+<div id="tasks-panel" class="tasks-panel">
+  <div class="tasks-panel-header">
+    <div class="tasks-panel-title-area">
+      <div class="tasks-panel-label">Tasks</div>
+      <div id="tasks-panel-title" class="tasks-panel-item-title"></div>
+    </div>
+    <button class="tasks-panel-close" onclick="closeTasksPanel()" title="Close">&#10005;</button>
+  </div>
+  <div id="tasks-list" class="tasks-list"></div>
+  <div class="tasks-add-area" id="tasks-add-area">
+    <button class="btn-outline tasks-add-btn" id="btn-add-task-action" onclick="showTaskActionForm()">+ Add task</button>
+    <div id="task-action-form" class="task-action-form" style="display:none">
+      <input id="ta-title"       class="ta-input" placeholder="Title *" />
+      <div class="ta-row">
+        <select id="ta-priority" class="ta-select">
+          <option value="low">Low priority</option>
+          <option value="medium" selected>Medium priority</option>
+          <option value="high">High priority</option>
+        </select>
+        <select id="ta-status" class="ta-select">
+          <option value="not_started">Not started</option>
+          <option value="in_progress">In progress</option>
+          <option value="complete">Complete</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
+      <div class="ta-row">
+        <input id="ta-owner"    class="ta-input" placeholder="Owner" style="flex:1" />
+        <input id="ta-due"      class="ta-input" placeholder="Due (e.g. 010126)" style="flex:1" />
+      </div>
+      <textarea id="ta-description" class="ta-textarea" placeholder="Description (optional)"></textarea>
+      <div class="ta-btns">
+        <button class="btn-primary"  onclick="saveTaskAction()">Save</button>
+        <button class="btn-outline"  onclick="hideTaskActionForm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Notes slide-in panel ───────────────────────────────────────────────── -->
+<div id="notes-overlay" class="notes-overlay" onclick="closeNotes()"></div>
+<div id="notes-panel" class="notes-panel">
+  <div class="notes-panel-header">
+    <div class="notes-panel-title-area">
+      <div class="notes-panel-label">Notes</div>
+      <div id="notes-panel-title" class="notes-panel-task-title"></div>
+    </div>
+    <div id="btn-notes-ai" style="display:none"></div>
+    <button class="notes-panel-close" onclick="closeNotes()" title="Close">&#10005;</button>
+  </div>
+  <div id="notes-sections-container" class="notes-sections-container"></div>
+  <div class="notes-add-section-row">
+    <button class="btn-add-notes-section" onclick="addNotesSection()">+ Add section</button>
+  </div>
+  <div id="notes-ai-preview" class="notes-ai-preview" style="display:none">
+    <div class="notes-ai-label">AI suggestion</div>
+    <div id="notes-ai-preview-text" class="notes-ai-preview-text"></div>
+    <div class="notes-ai-btns">
+      <button class="btn-primary" onclick="acceptAIClean()">Accept &amp; save</button>
+      <button class="btn-outline" onclick="discardAIClean()">Discard</button>
+    </div>
+  </div>
+  <div class="notes-status" id="notes-status"></div>
+  <div id="notes-subitems" class="notes-subitems" style="display:none"></div>
+</div>
+
+<datalist id="owner-suggestions"></datalist>
+<script src="/app/app.js?v=50"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Environment
+.env
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
