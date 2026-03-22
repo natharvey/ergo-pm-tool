@@ -1,0 +1,25 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/ergo
+            git pull origin main
+            docker build -t ergo .
+            docker stop ergo || true
+            docker rm ergo || true
+            docker run -d --name ergo -p 8000:8000 --env-file .env -v ergo_data:/app/data --restart unless-stopped ergo
