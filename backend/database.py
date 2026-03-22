@@ -9,8 +9,10 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Fo
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, backref
 from datetime import datetime
 
-# SQLite file stored next to the backend folder
-DATABASE_URL = "sqlite:///./pm_tool.db"
+# SQLite file — use /app/data inside Docker, local file otherwise
+import os as _os
+_db_dir = "/app/data" if _os.path.isdir("/app/data") else "."
+DATABASE_URL = f"sqlite:///{_db_dir}/pm_tool.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
